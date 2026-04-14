@@ -123,6 +123,9 @@ if [[ "$install_swiftbar" =~ ^[Yy]$ ]]; then
         echo "CUSTOM_NO_CONN_ICON=\"${custom_no_conn:-}\""
     } > "$CONFIG_DIR/icons.conf"
 
+    # Clear update-check caches so a fresh install doesn't show a stale "update available"
+    rm -f /tmp/mac-netswitch-update-check /tmp/mac-netswitch-latest-sha
+
     chmod +x "$PLUGIN"
     echo "✓ SwiftBar plugin installed to $plugins_dir"
 
