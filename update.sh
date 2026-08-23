@@ -16,6 +16,11 @@ git fetch origin
 git reset --hard origin/master
 echo ""
 
+# Re-launch with the freshly pulled script so new placeholders/logic take effect
+if [ "${1:-}" != "--post-pull" ]; then
+    exec "$0" --post-pull
+fi
+
 # ── Refresh auto Wi-Fi toggle if installed ─────────────────────────────────────
 USER_PLIST="$HOME/Library/LaunchAgents/com.mine.mac-netswitch.plist"
 if [ -f "$USER_PLIST" ]; then
