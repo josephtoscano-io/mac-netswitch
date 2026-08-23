@@ -64,8 +64,11 @@ if [[ "$install_swiftbar" =~ ^[Yy]$ ]]; then
     mkdir -p "$plugins_dir"
 
     eth_icon_path="$SCRIPT_DIR/ethernet-icon.png"
-    wifi_icon_path="$SCRIPT_DIR/wifi-icon.png"
+    wifi_strong_icon_path="$SCRIPT_DIR/wifi-icon.png"
+    wifi_medium_icon_path="$SCRIPT_DIR/wifi_2bars_icon.png"
+    wifi_weak_icon_path="$SCRIPT_DIR/wifi_1bar_icon.png"
     no_conn_icon_path="$SCRIPT_DIR/no_connection-icon.png"
+    searching_icon_path="$SCRIPT_DIR/wifi_searching_icon.png"
 
     echo ""
     read -r -p "Use custom menu bar icons? [y/n] " use_custom
@@ -80,11 +83,25 @@ if [[ "$install_swiftbar" =~ ^[Yy]$ ]]; then
             eth_icon_path="$custom_eth"
         fi
 
-        read -r -p "Path to Wi-Fi icon: " custom_wifi
-        if [ -n "$custom_wifi" ]; then
-            custom_wifi="${custom_wifi/#\~/$HOME}"
-            [ ! -f "$custom_wifi" ] && { echo "Error: $custom_wifi not found."; exit 1; }
-            wifi_icon_path="$custom_wifi"
+        read -r -p "Path to Wi-Fi strong icon: " custom_wifi_strong
+        if [ -n "$custom_wifi_strong" ]; then
+            custom_wifi_strong="${custom_wifi_strong/#\~/$HOME}"
+            [ ! -f "$custom_wifi_strong" ] && { echo "Error: $custom_wifi_strong not found."; exit 1; }
+            wifi_strong_icon_path="$custom_wifi_strong"
+        fi
+
+        read -r -p "Path to Wi-Fi medium icon: " custom_wifi_medium
+        if [ -n "$custom_wifi_medium" ]; then
+            custom_wifi_medium="${custom_wifi_medium/#\~/$HOME}"
+            [ ! -f "$custom_wifi_medium" ] && { echo "Error: $custom_wifi_medium not found."; exit 1; }
+            wifi_medium_icon_path="$custom_wifi_medium"
+        fi
+
+        read -r -p "Path to Wi-Fi weak icon: " custom_wifi_weak
+        if [ -n "$custom_wifi_weak" ]; then
+            custom_wifi_weak="${custom_wifi_weak/#\~/$HOME}"
+            [ ! -f "$custom_wifi_weak" ] && { echo "Error: $custom_wifi_weak not found."; exit 1; }
+            wifi_weak_icon_path="$custom_wifi_weak"
         fi
 
         read -r -p "Path to no-connection icon: " custom_no_conn
@@ -93,24 +110,39 @@ if [[ "$install_swiftbar" =~ ^[Yy]$ ]]; then
             [ ! -f "$custom_no_conn" ] && { echo "Error: $custom_no_conn not found."; exit 1; }
             no_conn_icon_path="$custom_no_conn"
         fi
+
+        read -r -p "Path to searching icon: " custom_searching
+        if [ -n "$custom_searching" ]; then
+            custom_searching="${custom_searching/#\~/$HOME}"
+            [ ! -f "$custom_searching" ] && { echo "Error: $custom_searching not found."; exit 1; }
+            searching_icon_path="$custom_searching"
+        fi
     fi
 
     PLUGIN="$plugins_dir/network-status.2s.sh"
     cp "$SCRIPT_DIR/swiftbar/network-status.2s.sh" "$PLUGIN"
 
-    if [ ! -f "$eth_icon_path" ] || [ ! -f "$wifi_icon_path" ] || [ ! -f "$no_conn_icon_path" ]; then
-        echo "Error: icon file(s) not found. Check paths and try again."
-        exit 1
-    fi
+    for icon in "$eth_icon_path" "$wifi_strong_icon_path" "$wifi_medium_icon_path" "$wifi_weak_icon_path" "$no_conn_icon_path" "$searching_icon_path"; do
+        if [ ! -f "$icon" ]; then
+            echo "Error: $icon not found. Check paths and try again."
+            exit 1
+        fi
+    done
 
     ETH_B64=$(base64 -i "$eth_icon_path")
-    WIFI_B64=$(base64 -i "$wifi_icon_path")
+    WIFI_STRONG_B64=$(base64 -i "$wifi_strong_icon_path")
+    WIFI_MEDIUM_B64=$(base64 -i "$wifi_medium_icon_path")
+    WIFI_WEAK_B64=$(base64 -i "$wifi_weak_icon_path")
     NO_CONN_B64=$(base64 -i "$no_conn_icon_path")
+    SEARCHING_B64=$(base64 -i "$searching_icon_path")
     INSTALLED_SHA=$(cd "$SCRIPT_DIR" && git rev-parse HEAD 2>/dev/null || echo "")
     REPO_DIR_ESCAPED=$(echo "$SCRIPT_DIR" | sed 's|/|\\/|g')
-    sed -i '' "s|__WIFI_ICON__|$WIFI_B64|" "$PLUGIN"
+    sed -i '' "s|__WIFI_STRONG_ICON__|$WIFI_STRONG_B64|" "$PLUGIN"
+    sed -i '' "s|__WIFI_MEDIUM_ICON__|$WIFI_MEDIUM_B64|" "$PLUGIN"
+    sed -i '' "s|__WIFI_WEAK_ICON__|$WIFI_WEAK_B64|" "$PLUGIN"
     sed -i '' "s|__ETH_ICON__|$ETH_B64|" "$PLUGIN"
     sed -i '' "s|__NO_CONN_ICON__|$NO_CONN_B64|" "$PLUGIN"
+    sed -i '' "s|__SEARCHING_ICON__|$SEARCHING_B64|" "$PLUGIN"
     sed -i '' "s|__INSTALLED_SHA__|$INSTALLED_SHA|" "$PLUGIN"
     sed -i '' "s/__REPO_DIR__/$REPO_DIR_ESCAPED/" "$PLUGIN"
 
@@ -119,8 +151,11 @@ if [[ "$install_swiftbar" =~ ^[Yy]$ ]]; then
     mkdir -p "$CONFIG_DIR"
     {
         echo "CUSTOM_ETH_ICON=\"${custom_eth:-}\""
-        echo "CUSTOM_WIFI_ICON=\"${custom_wifi:-}\""
+        echo "CUSTOM_WIFI_STRONG_ICON=\"${custom_wifi_strong:-}\""
+        echo "CUSTOM_WIFI_MEDIUM_ICON=\"${custom_wifi_medium:-}\""
+        echo "CUSTOM_WIFI_WEAK_ICON=\"${custom_wifi_weak:-}\""
         echo "CUSTOM_NO_CONN_ICON=\"${custom_no_conn:-}\""
+        echo "CUSTOM_SEARCHING_ICON=\"${custom_searching:-}\""
     } > "$CONFIG_DIR/icons.conf"
 
     # Clear update-check caches so a fresh install doesn't show a stale "update available"

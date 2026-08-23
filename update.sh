@@ -50,26 +50,38 @@ if [ -f "$PLUGIN" ]; then
     # Load custom icon paths (if any were set during install)
     CONFIG_FILE="$HOME/.config/mac-netswitch/icons.conf"
     CUSTOM_ETH_ICON=""
-    CUSTOM_WIFI_ICON=""
+    CUSTOM_WIFI_STRONG_ICON=""
+    CUSTOM_WIFI_MEDIUM_ICON=""
+    CUSTOM_WIFI_WEAK_ICON=""
     CUSTOM_NO_CONN_ICON=""
+    CUSTOM_SEARCHING_ICON=""
     [ -f "$CONFIG_FILE" ] && . "$CONFIG_FILE"
 
     # Use custom icons if configured, otherwise pull fresh from repo
     eth_icon="${CUSTOM_ETH_ICON:-$SCRIPT_DIR/ethernet-icon.png}"
-    wifi_icon="${CUSTOM_WIFI_ICON:-$SCRIPT_DIR/wifi-icon.png}"
+    wifi_strong_icon="${CUSTOM_WIFI_STRONG_ICON:-$SCRIPT_DIR/wifi-icon.png}"
+    wifi_medium_icon="${CUSTOM_WIFI_MEDIUM_ICON:-$SCRIPT_DIR/wifi_2bars_icon.png}"
+    wifi_weak_icon="${CUSTOM_WIFI_WEAK_ICON:-$SCRIPT_DIR/wifi_1bar_icon.png}"
     no_conn_icon="${CUSTOM_NO_CONN_ICON:-$SCRIPT_DIR/no_connection-icon.png}"
+    searching_icon="${CUSTOM_SEARCHING_ICON:-$SCRIPT_DIR/wifi_searching_icon.png}"
 
     cp "$SCRIPT_DIR/swiftbar/network-status.2s.sh" "$PLUGIN"
 
-    WIFI_B64=$(base64 -i "$wifi_icon")
+    WIFI_STRONG_B64=$(base64 -i "$wifi_strong_icon")
+    WIFI_MEDIUM_B64=$(base64 -i "$wifi_medium_icon")
+    WIFI_WEAK_B64=$(base64 -i "$wifi_weak_icon")
     ETH_B64=$(base64 -i "$eth_icon")
     NO_CONN_B64=$(base64 -i "$no_conn_icon")
+    SEARCHING_B64=$(base64 -i "$searching_icon")
     INSTALLED_SHA=$(git rev-parse HEAD 2>/dev/null || echo "")
     REPO_DIR_ESCAPED=$(echo "$SCRIPT_DIR" | sed 's|/|\\/|g')
 
-    sed -i '' "s|__WIFI_ICON__|$WIFI_B64|" "$PLUGIN"
+    sed -i '' "s|__WIFI_STRONG_ICON__|$WIFI_STRONG_B64|" "$PLUGIN"
+    sed -i '' "s|__WIFI_MEDIUM_ICON__|$WIFI_MEDIUM_B64|" "$PLUGIN"
+    sed -i '' "s|__WIFI_WEAK_ICON__|$WIFI_WEAK_B64|" "$PLUGIN"
     sed -i '' "s|__ETH_ICON__|$ETH_B64|" "$PLUGIN"
     sed -i '' "s|__NO_CONN_ICON__|$NO_CONN_B64|" "$PLUGIN"
+    sed -i '' "s|__SEARCHING_ICON__|$SEARCHING_B64|" "$PLUGIN"
     sed -i '' "s|__INSTALLED_SHA__|$INSTALLED_SHA|" "$PLUGIN"
     sed -i '' "s/__REPO_DIR__/$REPO_DIR_ESCAPED/" "$PLUGIN"
 

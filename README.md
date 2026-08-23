@@ -1,6 +1,6 @@
 # mac-netswitch
 
-Automatically turns off Wi-Fi when a wired ethernet connection is detected, and turns it back on when ethernet is unplugged. Optionally includes a SwiftBar menu bar icon that swaps between ethernet, Wi-Fi, and no-connection states, with built-in self-updating.
+Automatically turns off Wi-Fi when a wired ethernet connection is detected, and turns it back on when ethernet is unplugged. Optionally includes a SwiftBar menu bar icon that swaps between ethernet, Wi-Fi, searching, and no-connection states, with built-in self-updating.
 
 Tested on macOS Sequoia.
 
@@ -40,11 +40,16 @@ After installing the SwiftBar plugin:
 1. Open SwiftBar and set your plugins folder to `~/swiftbar-plugins`
 2. Hide the system Wi-Fi icon: **System Settings → Control Center → Wi-Fi → Don't Show in Menu Bar**
 
-The icon will automatically swap between ethernet and Wi-Fi based on your connection.
+The icon will automatically swap based on your connection state:
+
+- **Ethernet** — wired connection is active
+- **Wi-Fi** — connected to a wireless network (icon reflects signal strength)
+- **Searching** — Wi-Fi is on but not yet associated (e.g. right after unplugging ethernet)
+- **No connection** — Wi-Fi is off and no ethernet
 
 ### Custom icons
 
-The installer uses the bundled icons by default. If you'd like to use your own, choose "Use custom menu bar icons" during install and provide paths to your PNG files (ethernet, Wi-Fi, and no-connection). Icons are embedded into the plugin at install time, so the source files can be deleted afterward. Custom icons persist across updates.
+The installer uses the bundled icons by default. If you'd like to use your own, choose "Use custom menu bar icons" during install and provide paths to your PNG files (ethernet, Wi-Fi strong/medium/weak, searching, and no-connection). Icons are embedded into the plugin at install time, so the source files can be deleted afterward. Custom icons persist across updates.
 
 ### Updates
 

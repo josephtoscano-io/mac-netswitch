@@ -7,9 +7,12 @@
 # <swiftbar.hideSwiftBar>true</swiftbar.hideSwiftBar>
 # <swiftbar.hideDisablePlugin>true</swiftbar.hideDisablePlugin>
 
-WIFI_ICON="__WIFI_ICON__"
+WIFI_STRONG_ICON="__WIFI_STRONG_ICON__"
+WIFI_MEDIUM_ICON="__WIFI_MEDIUM_ICON__"
+WIFI_WEAK_ICON="__WIFI_WEAK_ICON__"
 ETH_ICON="__ETH_ICON__"
 NO_CONN_ICON="__NO_CONN_ICON__"
+SEARCHING_ICON="__SEARCHING_ICON__"
 INSTALLED_SHA="__INSTALLED_SHA__"
 REPO_DIR="__REPO_DIR__"
 
@@ -20,7 +23,7 @@ now=$(date +%s)
 last_check=0
 [ -f "$CHECK_FILE" ] && last_check=$(cat "$CHECK_FILE")
 
-if (( now - last_check > 3600 )); then
+if (( now - last_check > 300 )); then
     latest=$(curl -s --max-time 5 "https://api.github.com/repos/josephtoscano-io/mac-netswitch/commits/master" | sed -En 's/.*"sha": "([a-f0-9]+)".*/\1/p' | head -n1)
     if [ -n "$latest" ]; then
         echo "$latest" > "$LATEST_SHA_FILE"
@@ -66,7 +69,30 @@ done
 
 air_status=$(networksetup -getairportpower "$air_name" 2>/dev/null | awk '{print $4}')
 
-if [ "$air_status" = "On" ]; then
+# Wi-Fi interface is "searching" when powered on but not yet associated
+air_active=false
+if [ -n "$air_name" ] && ifconfig "$air_name" 2>/dev/null | grep -q "status: active"; then
+    air_active=true
+fi
+
+if $eth_active; then
+    echo "$BADGE | templateImage=$ETH_ICON$BADGE_PARAMS"
+    echo "---"
+    echo "Open Network Settings | bash=open param1=x-apple.systempreferences:com.apple.Network-Settings.extension terminal=false"
+    echo "Turn Wi-Fi On | bash=/usr/sbin/networksetup param1=-setairportpower param2=$air_name param3=on terminal=false refresh=true"
+    print_update_item
+elif [ "$air_status" = "On" ] && $air_active; then
+    rssi=$(/System/Library/PrivateFrameworks/Apple80211.framework/Resources/airport -I 2>/dev/null | awk '/agrCtlRSSI/{print $2}')
+    WIFI_ICON="$WIFI_STRONG_ICON"
+    if [ -n "$rssi" ]; then
+        if [ "$rssi" -ge -50 ]; then
+            WIFI_ICON="$WIFI_STRONG_ICON"
+        elif [ "$rssi" -ge -70 ]; then
+            WIFI_ICON="$WIFI_MEDIUM_ICON"
+        else
+            WIFI_ICON="$WIFI_WEAK_ICON"
+        fi
+    fi
     echo "$BADGE | templateImage=$WIFI_ICON$BADGE_PARAMS"
     echo "---"
     ssid=$(networksetup -getairportnetwork "$air_name" 2>/dev/null | sed 's/Current Wi-Fi Network: //')
@@ -75,11 +101,13 @@ if [ "$air_status" = "On" ]; then
     echo "Open Wi-Fi Settings | bash=open param1=x-apple.systempreferences:com.apple.wifi-settings-extension terminal=false"
     echo "Turn Wi-Fi Off | bash=/usr/sbin/networksetup param1=-setairportpower param2=$air_name param3=off terminal=false refresh=true"
     print_update_item
-elif $eth_active; then
-    echo "$BADGE | templateImage=$ETH_ICON$BADGE_PARAMS"
+elif [ "$air_status" = "On" ]; then
+    echo "$BADGE | templateImage=$SEARCHING_ICON$BADGE_PARAMS"
     echo "---"
-    echo "Open Network Settings | bash=open param1=x-apple.systempreferences:com.apple.Network-Settings.extension terminal=false"
-    echo "Turn Wi-Fi On | bash=/usr/sbin/networksetup param1=-setairportpower param2=$air_name param3=on terminal=false refresh=true"
+    echo "Searching for network…"
+    echo "---"
+    echo "Open Wi-Fi Settings | bash=open param1=x-apple.systempreferences:com.apple.wifi-settings-extension terminal=false"
+    echo "Turn Wi-Fi Off | bash=/usr/sbin/networksetup param1=-setairportpower param2=$air_name param3=off terminal=false refresh=true"
     print_update_item
 else
     echo "$BADGE | templateImage=$NO_CONN_ICON$BADGE_PARAMS"
