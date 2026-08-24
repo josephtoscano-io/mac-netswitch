@@ -82,17 +82,19 @@ if $eth_active; then
     echo "Turn Wi-Fi On | bash=/usr/sbin/networksetup param1=-setairportpower param2=$air_name param3=on terminal=false refresh=true"
     print_update_item
 elif [ "$air_status" = "On" ] && $air_active; then
-    # Read cached RSSI (refreshed in background every 30 seconds)
-    RSSI_CACHE="/tmp/mac-netswitch-rssi"
-    RSSI_TS="/tmp/mac-netswitch-rssi-ts"
-    rssi_last=0
-    [ -f "$RSSI_TS" ] && rssi_last=$(cat "$RSSI_TS")
-    if (( now - rssi_last > 30 )); then
-        echo "$now" > "$RSSI_TS"
-        (system_profiler SPAirPortDataType 2>/dev/null | awk -F': ' '/Signal \/ Noise/{print $2}' | awk '{print $1}' > "$RSSI_CACHE") &
-    fi
     rssi=""
-    [ -f "$RSSI_CACHE" ] && rssi=$(cat "$RSSI_CACHE")
+    rssi=$(ioreg -r -c IO80211Interface 2>/dev/null | awk -F'= ' '/"IO80211RSSI" /{gsub(/[^-0-9]/,"",$2); print $2; exit}')
+    if [ -z "$rssi" ]; then
+        RSSI_CACHE="/tmp/mac-netswitch-rssi"
+        RSSI_TS="/tmp/mac-netswitch-rssi-ts"
+        [ -f "$RSSI_CACHE" ] && rssi=$(cat "$RSSI_CACHE")
+        rssi_last=0
+        [ -f "$RSSI_TS" ] && rssi_last=$(cat "$RSSI_TS")
+        if (( now - rssi_last > 10 )); then
+            echo "$now" > "$RSSI_TS"
+            (system_profiler SPAirPortDataType 2>/dev/null | awk -F': ' '/Signal \/ Noise/{print $2}' | awk '{print $1}' > "$RSSI_CACHE") &
+        fi
+    fi
     WIFI_ICON="$WIFI_STRONG_ICON"
     if [ -n "$rssi" ]; then
         if [ "$rssi" -ge -55 ]; then
