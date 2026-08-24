@@ -82,10 +82,20 @@ if $eth_active; then
     echo "Turn Wi-Fi On | bash=/usr/sbin/networksetup param1=-setairportpower param2=$air_name param3=on terminal=false refresh=true"
     print_update_item
 elif [ "$air_status" = "On" ] && $air_active; then
-    rssi=$(/System/Library/PrivateFrameworks/Apple80211.framework/Resources/airport -I 2>/dev/null | awk '/agrCtlRSSI/{print $2}')
+    # Read cached RSSI (refreshed in background every 30 seconds)
+    RSSI_CACHE="/tmp/mac-netswitch-rssi"
+    RSSI_TS="/tmp/mac-netswitch-rssi-ts"
+    rssi_last=0
+    [ -f "$RSSI_TS" ] && rssi_last=$(cat "$RSSI_TS")
+    if (( now - rssi_last > 30 )); then
+        echo "$now" > "$RSSI_TS"
+        (system_profiler SPAirPortDataType 2>/dev/null | awk -F': ' '/Signal \/ Noise/{print $2}' | awk '{print $1}' > "$RSSI_CACHE") &
+    fi
+    rssi=""
+    [ -f "$RSSI_CACHE" ] && rssi=$(cat "$RSSI_CACHE")
     WIFI_ICON="$WIFI_STRONG_ICON"
     if [ -n "$rssi" ]; then
-        if [ "$rssi" -ge -50 ]; then
+        if [ "$rssi" -ge -55 ]; then
             WIFI_ICON="$WIFI_STRONG_ICON"
         elif [ "$rssi" -ge -70 ]; then
             WIFI_ICON="$WIFI_MEDIUM_ICON"
