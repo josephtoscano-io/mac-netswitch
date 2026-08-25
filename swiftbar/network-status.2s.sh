@@ -82,31 +82,64 @@ if $eth_active; then
     echo "Turn Wi-Fi On | bash=/usr/sbin/networksetup param1=-setairportpower param2=$air_name param3=on terminal=false refresh=true"
     print_update_item
 elif [ "$air_status" = "On" ] && $air_active; then
-    # system_profiler is slow (~1-2s), so refresh the signal in the background
-    # and read the cached value. Parse ONLY the current network's signal — the
-    # "Signal / Noise" line under "Current Network Information" (there are other
-    # such lines for nearby networks that must be ignored).
-    RSSI_CACHE="/tmp/mac-netswitch-rssi"
-    RSSI_TS="/tmp/mac-netswitch-rssi-ts"
-    rssi_last=0
-    [ -f "$RSSI_TS" ] && rssi_last=$(cat "$RSSI_TS")
-    if (( now - rssi_last > 5 )); then
-        echo "$now" > "$RSSI_TS"
-        (system_profiler SPAirPortDataType 2>/dev/null | awk '/Current Network Information/{f=1} f && /Signal \/ Noise/{print $4; exit}' > "$RSSI_CACHE") &
+    # Signal quality is judged by SNR (signal - noise), which is closer to what
+    # macOS itself weighs than raw RSSI. system_profiler is slow (~1-2s), so it
+    # runs in the background and we read the cached SNR. Parse ONLY the current
+    # network's "Signal / Noise" line (under "Current Network Information") — the
+    # other such lines are nearby networks and must be ignored.
+    SNR_CACHE="/tmp/mac-netswitch-snr"
+    SNR_TS="/tmp/mac-netswitch-snr-ts"
+    LEVEL_FILE="/tmp/mac-netswitch-wifi-level"
+    snr_last=0
+    [ -f "$SNR_TS" ] && snr_last=$(cat "$SNR_TS")
+    if (( now - snr_last > 5 )); then
+        echo "$now" > "$SNR_TS"
+        (system_profiler SPAirPortDataType 2>/dev/null | awk '/Current Network Information/{f=1} f && /Signal \/ Noise/{print ($4 - $7); exit}' > "$SNR_CACHE") &
     fi
-    rssi=""
-    [ -f "$RSSI_CACHE" ] && rssi=$(head -n1 "$RSSI_CACHE")
-    [[ "$rssi" =~ ^-?[0-9]+$ ]] || rssi=""
-    WIFI_ICON="$WIFI_STRONG_ICON"
-    if [ -n "$rssi" ]; then
-        if [ "$rssi" -ge -67 ]; then
-            WIFI_ICON="$WIFI_STRONG_ICON"
-        elif [ "$rssi" -ge -77 ]; then
-            WIFI_ICON="$WIFI_MEDIUM_ICON"
+    snr=""
+    [ -f "$SNR_CACHE" ] && snr=$(head -n1 "$SNR_CACHE")
+    [[ "$snr" =~ ^-?[0-9]+$ ]] || snr=""
+
+    # Map SNR to a 3-level bar count with hysteresis so the icon holds steady and
+    # doesn't flicker at a boundary (like the native icon). Nominal cut points are
+    # 30 dB (full) and 18 dB (medium); a +/-3 dB dead-zone must be crossed to move.
+    last_level=""
+    [ -f "$LEVEL_FILE" ] && last_level=$(head -n1 "$LEVEL_FILE")
+    [[ "$last_level" =~ ^[123]$ ]] || last_level=""
+    level=3
+    if [ -n "$snr" ]; then
+        if [ -z "$last_level" ]; then
+            if   [ "$snr" -ge 30 ]; then level=3
+            elif [ "$snr" -ge 18 ]; then level=2
+            else                         level=1
+            fi
         else
-            WIFI_ICON="$WIFI_WEAK_ICON"
+            case "$last_level" in
+                3) if   [ "$snr" -lt 15 ]; then level=1
+                   elif [ "$snr" -lt 27 ]; then level=2
+                   else                         level=3
+                   fi ;;
+                2) if   [ "$snr" -ge 33 ]; then level=3
+                   elif [ "$snr" -lt 15 ]; then level=1
+                   else                         level=2
+                   fi ;;
+                1) if   [ "$snr" -ge 33 ]; then level=3
+                   elif [ "$snr" -ge 21 ]; then level=2
+                   else                         level=1
+                   fi ;;
+            esac
         fi
+        echo "$level" > "$LEVEL_FILE"
+    elif [ -n "$last_level" ]; then
+        level=$last_level
     fi
+
+    case "$level" in
+        3) WIFI_ICON="$WIFI_STRONG_ICON" ;;
+        2) WIFI_ICON="$WIFI_MEDIUM_ICON" ;;
+        1) WIFI_ICON="$WIFI_WEAK_ICON" ;;
+        *) WIFI_ICON="$WIFI_STRONG_ICON" ;;
+    esac
     echo "$BADGE | templateImage=$WIFI_ICON$BADGE_PARAMS"
     echo "---"
     ssid=$(networksetup -getairportnetwork "$air_name" 2>/dev/null | sed 's/Current Wi-Fi Network: //')
