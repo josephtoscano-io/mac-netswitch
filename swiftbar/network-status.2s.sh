@@ -95,11 +95,19 @@ elif [ "$air_status" = "On" ] && $air_active; then
             (system_profiler SPAirPortDataType 2>/dev/null | awk -F': ' '/Signal \/ Noise/{print $2}' | awk '{print $1}' > "$RSSI_CACHE") &
         fi
     fi
+    RSSI_SMOOTH="/tmp/mac-netswitch-rssi-smooth"
+    if [ -n "$rssi" ]; then
+        if [ -f "$RSSI_SMOOTH" ]; then
+            prev=$(cat "$RSSI_SMOOTH")
+            [ -n "$prev" ] && rssi=$(( (prev * 7 + rssi * 3) / 10 ))
+        fi
+        echo "$rssi" > "$RSSI_SMOOTH"
+    fi
     WIFI_ICON="$WIFI_STRONG_ICON"
     if [ -n "$rssi" ]; then
-        if [ "$rssi" -ge -55 ]; then
+        if [ "$rssi" -ge -65 ]; then
             WIFI_ICON="$WIFI_STRONG_ICON"
-        elif [ "$rssi" -ge -70 ]; then
+        elif [ "$rssi" -ge -80 ]; then
             WIFI_ICON="$WIFI_MEDIUM_ICON"
         else
             WIFI_ICON="$WIFI_WEAK_ICON"
